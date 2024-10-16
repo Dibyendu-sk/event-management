@@ -16,13 +16,13 @@ public class UserDetailsModel implements UserDetails {
     private List<GrantedAuthority> authorities;
 
     public UserDetailsModel(UserInfo user){
-        this.username = user.getUsername();
+        this.username = user.getEmail();
         this.password = user.getPassword();
-        this.authorities = Stream.of(user.getRoles().split(",")).map(SimpleGrantedAuthority::new).collect(Collectors.toList());
+        this.authorities = Stream.of(user.getRole().split(",")).map(role -> new SimpleGrantedAuthority("ROLE_" + role.trim())).collect(Collectors.toList());
     }
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return null;
+        return this.authorities;
     }
 
     @Override

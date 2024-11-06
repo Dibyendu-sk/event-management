@@ -1,4 +1,4 @@
-package com.dibyendu.demoeventmanagement.repo;
+package com.dibyendu.demoeventmanagement.repo.jpa;
 
 import com.dibyendu.demoeventmanagement.models.entity.UserInfo;
 import org.springframework.data.jpa.repository.JpaRepository;

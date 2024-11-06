@@ -2,7 +2,7 @@ package com.dibyendu.demoeventmanagement.service.impl;
 
 import com.dibyendu.demoeventmanagement.models.UserDetailsModel;
 import com.dibyendu.demoeventmanagement.models.entity.UserInfo;
-import com.dibyendu.demoeventmanagement.repo.UserRepo;
+import com.dibyendu.demoeventmanagement.repo.jpa.UserRepo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;

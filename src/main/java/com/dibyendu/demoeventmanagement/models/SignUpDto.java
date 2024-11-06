@@ -16,6 +16,4 @@ public class SignUpDto {
     @NotEmpty
     @NotNull
     private String password;
-    private String role="ADMIN";
-    private String associatedEvent;
 }

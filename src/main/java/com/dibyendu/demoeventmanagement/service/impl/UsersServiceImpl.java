@@ -1,15 +1,21 @@
 package com.dibyendu.demoeventmanagement.service.impl;
 
+import com.dibyendu.demoeventmanagement.exceptions.ForbiddenException;
 import com.dibyendu.demoeventmanagement.exceptions.ResourceAlreadyExistsException;
-import com.dibyendu.demoeventmanagement.models.EventsEnums;
-import com.dibyendu.demoeventmanagement.models.Roles;
-import com.dibyendu.demoeventmanagement.models.SignUpDto;
+import com.dibyendu.demoeventmanagement.exceptions.ResourceNotFoundException;
+import com.dibyendu.demoeventmanagement.models.*;
+import com.dibyendu.demoeventmanagement.models.entity.Events;
+import com.dibyendu.demoeventmanagement.models.entity.Fest;
+import com.dibyendu.demoeventmanagement.models.documents.Participants;
 import com.dibyendu.demoeventmanagement.models.entity.UserInfo;
-import com.dibyendu.demoeventmanagement.repo.UserRepo;
+import com.dibyendu.demoeventmanagement.repo.jpa.EventRepo;
+import com.dibyendu.demoeventmanagement.repo.jpa.FestRepo;
+import com.dibyendu.demoeventmanagement.repo.mongo.ParticipantRepo;
+import com.dibyendu.demoeventmanagement.repo.jpa.UserRepo;
+import com.dibyendu.demoeventmanagement.service.AuthService;
 import com.dibyendu.demoeventmanagement.service.UsersService;
 import com.mailersend.sdk.MailerSend;
 import com.mailersend.sdk.MailerSendResponse;
-import com.mailersend.sdk.Recipient;
 import com.mailersend.sdk.emails.Email;
 import com.mailersend.sdk.exceptions.MailerSendException;
 import lombok.extern.slf4j.Slf4j;
@@ -22,20 +28,29 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.List;
-import java.util.Set;
+import java.time.Instant;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
 public class UsersServiceImpl implements UsersService {
     private final UserRepo userRepo;
+    private final ParticipantRepo participantRepo;
     private final PasswordEncoder passwordEncoder;
+    private final FestRepo festRepo;
+    private final AuthService authService;
+    private final EventRepo eventRepo;
     Set<String> events = Set.of(EventsEnums.GATE1.name(), EventsEnums.GATE2.name(), EventsEnums.HALL.name(), EventsEnums.LUNCH.name());
 
     @Autowired
-    public UsersServiceImpl(UserRepo userRepo, PasswordEncoder passwordEncoder) {
+    public UsersServiceImpl(UserRepo userRepo, ParticipantRepo participantRepo, PasswordEncoder passwordEncoder, FestRepo festRepo, AuthService authService, EventRepo eventRepo) {
         this.userRepo = userRepo;
+        this.participantRepo = participantRepo;
         this.passwordEncoder = passwordEncoder;
+        this.festRepo = festRepo;
+        this.authService = authService;
+        this.eventRepo = eventRepo;
     }
 
     @Override
@@ -45,21 +60,138 @@ public class UsersServiceImpl implements UsersService {
         UserInfo userInfo = new UserInfo();
         userInfo.setEmail(signUpDto.getEmail());
         userInfo.setPassword(passwordEncoder.encode(signUpDto.getPassword()));
+        userInfo.setAssociatedEvents(new HashSet<>());
         if (isAdmin) {
             userInfo.setRole(Roles.ADMIN.name());
-            userInfo.setAssociatedEvent(EventsEnums.ALL.name());
+//            userInfo.setAssociatedEvent(EventsEnums.ALL.name());
         } else {
-            String eventName = signUpDto.getAssociatedEvent().toUpperCase();
-            if (events.contains(eventName)) {
-                userInfo.setAssociatedEvent(eventName);
-                userInfo.setRole(Roles.VOLUNTEER.name());
-            } else {
-                throw new RuntimeException("Please provide a valid event");
-            }
+            userInfo.setRole(Roles.VOLUNTEER.name());
         }
         UserInfo savedUser = userRepo.save(userInfo);
-//        sendEmail(savedUser.getEmail(), signUpDto.getPassword());
         return Boolean.TRUE;
+    }
+
+    @Override
+    public Boolean assignVolunteer(AssignVolunteer assignVolunteer) {
+        Fest fest = festRepo.findById(assignVolunteer.getFestId())
+                .orElseThrow(() -> new ResourceNotFoundException("Fest not found"));
+
+        // extracting event ids from events
+//        List<String> eventIds = fest.getEvents().stream().map(Events::getId).toList();
+        Set<Events> festEvents = fest.getEvents();
+        List<String> requestedEventIds = assignVolunteer.getEventIds();
+        userRepo.findByEmail(assignVolunteer.getVolMail())
+                .ifPresentOrElse(userInfo -> {
+                            Set<Events> associatedEvents = userInfo.getAssociatedEvents();
+                            if (associatedEvents == null) {
+                                log.info("Initializing the associated events list if it's null");
+                                associatedEvents = new HashSet<>();
+                                userInfo.setAssociatedEvents(associatedEvents);
+                            }
+                            log.info("Total number of events in the fest is "+festEvents.size());
+                            Set<Events> eventsSet = festEvents.stream().filter(event -> requestedEventIds.contains(event.getId())).collect(Collectors.toSet());
+                            log.info("Assigning new events set to the volunteer");
+                            log.info(eventsSet.size()+" events will be assigned to the volunteer.");
+                            associatedEvents.addAll(eventsSet);
+                            userRepo.save(userInfo);
+                        }, () -> {
+                            throw new ResourceNotFoundException("Volunteer not found.");
+                        }
+                );
+
+        return Boolean.TRUE;
+    }
+
+    @Override
+    public Boolean addFest(FestDto festDto) {
+        Fest fest = new Fest();
+        fest.setId(festDto.getFestId());
+        fest.setFestName(festDto.getFestName());
+        festRepo.save(fest);
+        return Boolean.TRUE;
+    }
+
+    @Override
+    public Boolean addEventToFest(EventDto eventDto) {
+        festRepo.findById(eventDto.getFestId()).ifPresentOrElse(
+                fest -> {
+                    Events events = new Events();
+                    String eventId = fest.getId() + "_" + eventDto.getShortForm();
+                    if (eventRepo.existsById(eventId)) {
+                        throw new ResourceAlreadyExistsException("Event already exist.");
+                    }
+                    events.setId(eventId);
+                    events.setDescription(eventDto.getDescription());
+                    events.setEventName(eventDto.getEventName());
+
+                    Set<Events> festEvents = fest.getEvents();
+                    if (festEvents == null){
+                        festEvents=new HashSet<>();
+                        fest.setEvents(festEvents);
+                    }
+                    festEvents.add(events);
+                    festRepo.save(fest);
+                    eventRepo.save(events);
+                }, () -> {
+                    throw new ResourceNotFoundException("Fest not found.");
+                });
+        return Boolean.TRUE;
+    }
+
+    @Override
+    public Boolean addParticipants(AddParticipantsDto addParticipantsDto) {
+        festRepo.findById(addParticipantsDto.getFestId()).ifPresentOrElse(
+                fest -> {
+                    List<Participants> participants = addParticipantsDto.getParticipants().stream().map(
+                            participant -> {
+                                participant.setId(addParticipantsDto.getFestId() + "_" + participant.getId());
+                                participant.setFestId(fest.getId());
+                                return participant;
+                            }
+                    ).toList();
+                    participantRepo.saveAll(participants);
+                }, () -> {
+                    throw new ResourceNotFoundException("Fest not found.");
+                }
+        );
+
+        return true;
+    }
+
+    @Override
+    public Boolean verifyParticipant(ParticipantVerifyReq participantVerifyReq) {
+        Set<String> assignedEvents = authService.getLoggedInUserDtls().getAssignedEvents();
+        String enteredBy = authService.getLoggedInUserDtls().getEmail();
+        String eventId = participantVerifyReq.getEventId();
+        log.info("assigned events size - "+assignedEvents.size());
+        if (!assignedEvents.contains(eventId)){
+            throw new ForbiddenException("Access denied: You do not have permission to view or modify this event.");
+        }
+        participantRepo.findByFestIdAndNameAndId(participantVerifyReq.getFestId(), participantVerifyReq.getName(), participantVerifyReq.getReg()).ifPresentOrElse(
+                participants -> {
+                    List<ParticipatedEventDto> participatedEvents = participants.getParticipatedEvents();
+                    if (participatedEvents ==null){
+                        participatedEvents = new ArrayList<>();
+                        participants.setParticipatedEvents(participatedEvents);
+                    }
+                    if (!participatedEvents.stream().map(ParticipatedEventDto::getEventId).collect(Collectors.toSet()).contains(eventId)) {
+                        participatedEvents.add(new ParticipatedEventDto(eventId, new EntryDetails(enteredBy, Instant.now().getEpochSecond())));
+                        participantRepo.save(participants);
+                    }else {
+                        throw new ResourceAlreadyExistsException("Participant already verified with this event");
+                    }
+
+                },() ->{
+                    throw new ResourceNotFoundException("Participant not found.");
+                }
+        );
+        return Boolean.TRUE;
+    }
+
+    @Override
+    public List<Map<String, Instant>> fetchFests() {
+        String createdBy = authService.getLoggedInUserDtls().getEmail();
+        return festRepo.fetchFestNameAndCreatedDate(createdBy);
     }
 
     private boolean sendEmail(String receiverMail, String password) {
@@ -71,7 +203,7 @@ public class UsersServiceImpl implements UsersService {
 
         email.setSubject("Log in Credentials");
 
-        email.setPlain("============\nUsername - "+receiverMail+"\npassword - "+password);
+        email.setPlain("============Username - " + receiverMail + "password - " + password);
 //        email.setHtml("Username - "+userName+"<br>password - "+password);
 
         MailerSend ms = new MailerSend();
@@ -107,8 +239,9 @@ public class UsersServiceImpl implements UsersService {
             throw new RuntimeException(e);
         }
     }
+
     private void checkDuplicateUser(String email) {
-        if (userRepo.existsByEmail(email)){
+        if (userRepo.existsByEmail(email)) {
             throw new ResourceAlreadyExistsException("Email is already taken.");
         }
     }

@@ -88,7 +88,16 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
         return new ResponseEntity<>(new Response<>(HttpStatus.BAD_REQUEST.value(),validationErrors),HttpStatus.OK);
     }
+    @ExceptionHandler(ForbiddenException.class)
+    public ResponseEntity<Response<String>> handleUnAuthException(ForbiddenException fe){
+        Response<String> userResponse=new Response<>();
 
+        userResponse.setStatus(HttpStatus.FORBIDDEN.value());
+        userResponse.setData(fe.getMessage());
+
+        log.error(userResponse.getData());
+        return ResponseEntity.ok().body(userResponse);
+    }
 
 
     @ExceptionHandler(UnAuthorizedException.class)

@@ -1,14 +1,13 @@
 package com.dibyendu.demoeventmanagement.models;
 
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 
 @Getter
 @Setter
-@AllArgsConstructor
-public class EventDto {
-    private String eventId;
+public class EventAddDto {
     private String eventName;
-    private String eventDesc;
+    private String description;
+    private String shortForm;
+    private String festId;
 }

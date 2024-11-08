@@ -103,26 +103,26 @@ public class UsersServiceImpl implements UsersService {
     }
 
     @Override
-    public Boolean addFest(FestDto festDto) {
+    public Boolean addFest(FestCreateDto festCreateDto) {
         Fest fest = new Fest();
-        fest.setId(festDto.getFestId());
-        fest.setFestName(festDto.getFestName());
+        fest.setId(festCreateDto.getFestId());
+        fest.setFestName(festCreateDto.getFestName());
         festRepo.save(fest);
         return Boolean.TRUE;
     }
 
     @Override
-    public Boolean addEventToFest(EventDto eventDto) {
-        festRepo.findById(eventDto.getFestId()).ifPresentOrElse(
+    public Boolean addEventToFest(EventAddDto eventAddDto) {
+        festRepo.findById(eventAddDto.getFestId()).ifPresentOrElse(
                 fest -> {
                     Events events = new Events();
-                    String eventId = fest.getId() + "_" + eventDto.getShortForm();
+                    String eventId = fest.getId() + "_" + eventAddDto.getShortForm();
                     if (eventRepo.existsById(eventId)) {
                         throw new ResourceAlreadyExistsException("Event already exist.");
                     }
                     events.setId(eventId);
-                    events.setDescription(eventDto.getDescription());
-                    events.setEventName(eventDto.getEventName());
+                    events.setDescription(eventAddDto.getDescription());
+                    events.setEventName(eventAddDto.getEventName());
 
                     Set<Events> festEvents = fest.getEvents();
                     if (festEvents == null){
@@ -189,9 +189,19 @@ public class UsersServiceImpl implements UsersService {
     }
 
     @Override
-    public List<Map<String, Instant>> fetchFests() {
+    public List<FestDto> fetchFests() {
         String createdBy = authService.getLoggedInUserDtls().getEmail();
         return festRepo.fetchFestNameAndCreatedDate(createdBy);
+    }
+
+    @Override
+    public Set<Events> fetchEvents(String festId) {
+//        Fest fest = festRepo.findById(festId).orElseThrow(
+//                ()->new ResourceNotFoundException("Fest not found with the given fest id")
+//        );
+//        Set<Events> events = fest.getEvents();
+//        return events;
+        return festRepo.fetchEventsFromFestId(festId);
     }
 
     private boolean sendEmail(String receiverMail, String password) {

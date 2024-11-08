@@ -1,6 +1,7 @@
 package com.dibyendu.demoeventmanagement.controller;
 
 import com.dibyendu.demoeventmanagement.models.*;
+import com.dibyendu.demoeventmanagement.models.entity.Events;
 import com.dibyendu.demoeventmanagement.service.UsersService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -9,9 +10,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.Instant;
 import java.util.List;
-import java.util.Map;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -24,8 +24,8 @@ public class AdminController {
 
     @Operation(summary = "Add Fest", security = @SecurityRequirement(name = "basicAuth"))
     @PostMapping("/add-fest")
-    public ResponseEntity<Response<String>> addFest(@RequestBody FestDto festDto){
-        Boolean isSucceed = usersService.addFest(festDto);
+    public ResponseEntity<Response<String>> addFest(@RequestBody FestCreateDto festCreateDto){
+        Boolean isSucceed = usersService.addFest(festCreateDto);
         if (isSucceed) {
             return ResponseEntity.ok(new Response<>(HttpStatus.CREATED.value(), "Fest created"));
         }
@@ -35,8 +35,8 @@ public class AdminController {
     }
     @Operation(summary = "Add event to Fest", security = @SecurityRequirement(name = "basicAuth"))
     @PostMapping("/add-event")
-    public ResponseEntity<Response<String>> addEvent(@RequestBody EventDto eventDto){
-        Boolean isSucceed = usersService.addEventToFest(eventDto);
+    public ResponseEntity<Response<String>> addEvent(@RequestBody EventAddDto eventAddDto){
+        Boolean isSucceed = usersService.addEventToFest(eventAddDto);
         if (isSucceed) {
             return ResponseEntity.ok(new Response<>(HttpStatus.CREATED.value(), "Event added"));
         }
@@ -81,7 +81,12 @@ public class AdminController {
 
     @Operation(summary = "Fetch created fest list",security = @SecurityRequirement(name = "basicAuth"))
     @GetMapping("/fetch-fests")
-    public ResponseEntity<Response<List<Map<String, Instant>>>> fetchFests(){
+    public ResponseEntity<Response<List<FestDto>>> fetchFests(){
         return ResponseEntity.ok(new Response<>(HttpStatus.OK.value(), usersService.fetchFests()));
+    }
+    @Operation(summary = "Fetch event List",security = @SecurityRequirement(name = "basicAuth"))
+    @GetMapping("/fetch-events")
+    public ResponseEntity<Response<Set<Events>>> fetchEvents(@RequestParam String festId){
+        return ResponseEntity.ok(new Response<>(HttpStatus.OK.value(), usersService.fetchEvents(festId)));
     }
 }

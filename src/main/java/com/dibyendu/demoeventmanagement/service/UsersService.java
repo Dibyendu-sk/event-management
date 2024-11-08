@@ -1,22 +1,23 @@
 package com.dibyendu.demoeventmanagement.service;
 
 import com.dibyendu.demoeventmanagement.models.*;
+import com.dibyendu.demoeventmanagement.models.entity.Events;
 
-import java.time.Instant;
 import java.util.List;
-import java.util.Map;
+import java.util.Set;
 
 public interface UsersService {
     Boolean signUpUser(SignUpDto signUpDto, boolean isAdmin);
 
     Boolean assignVolunteer(AssignVolunteer assignVolunteer);
 
-    Boolean addFest(FestDto festDto);
+    Boolean addFest(FestCreateDto festCreateDto);
 
-    Boolean addEventToFest(EventDto eventDto);
+    Boolean addEventToFest(EventAddDto eventAddDto);
 
     Boolean addParticipants(AddParticipantsDto addParticipantsDto);
 
     Boolean verifyParticipant(ParticipantVerifyReq participantVerifyReq);
-    List<Map<String, Instant>> fetchFests();
+    List<FestDto> fetchFests();
+    Set<Events> fetchEvents(String festId);
 }

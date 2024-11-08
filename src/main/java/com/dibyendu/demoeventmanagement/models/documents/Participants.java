@@ -1,6 +1,5 @@
 package com.dibyendu.demoeventmanagement.models.documents;
 
-import com.dibyendu.demoeventmanagement.models.EventDto;
 import com.dibyendu.demoeventmanagement.models.ParticipatedEventDto;
 import jakarta.persistence.*;
 import lombok.Getter;

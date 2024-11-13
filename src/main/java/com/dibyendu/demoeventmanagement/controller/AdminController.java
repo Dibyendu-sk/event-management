@@ -1,6 +1,7 @@
 package com.dibyendu.demoeventmanagement.controller;
 
 import com.dibyendu.demoeventmanagement.models.*;
+import com.dibyendu.demoeventmanagement.models.documents.Participants;
 import com.dibyendu.demoeventmanagement.models.entity.Events;
 import com.dibyendu.demoeventmanagement.service.UsersService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -88,5 +89,10 @@ public class AdminController {
     @GetMapping("/fetch-events")
     public ResponseEntity<Response<Set<Events>>> fetchEvents(@RequestParam String festId){
         return ResponseEntity.ok(new Response<>(HttpStatus.OK.value(), usersService.fetchEvents(festId)));
+    }
+    @Operation(summary = "Fetch participants List",security = @SecurityRequirement(name = "basicAuth"))
+    @GetMapping("/fetch-participants")
+    public ResponseEntity<Response<Set<Participants>>> fetchParticipants(@RequestParam String festId){
+        return ResponseEntity.ok(new Response<>(HttpStatus.OK.value(), usersService.fetchParticipants(festId)));
     }
 }

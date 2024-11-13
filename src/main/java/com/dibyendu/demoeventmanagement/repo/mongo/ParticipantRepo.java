@@ -5,6 +5,7 @@ import org.springframework.data.mongodb.repository.Aggregation;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -14,4 +15,5 @@ public interface ParticipantRepo extends MongoRepository<Participants,String> {
 //    })
 //    Optional<Participants> fetchParticipantDtls(String festId, String name, String reg);
     Optional<Participants> findByFestIdAndNameAndId(String festId, String name, String reg);
+    Optional<List<Participants>> findByFestId(String festId);
 }

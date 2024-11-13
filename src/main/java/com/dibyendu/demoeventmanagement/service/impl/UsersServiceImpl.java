@@ -196,12 +196,22 @@ public class UsersServiceImpl implements UsersService {
 
     @Override
     public Set<Events> fetchEvents(String festId) {
-//        Fest fest = festRepo.findById(festId).orElseThrow(
-//                ()->new ResourceNotFoundException("Fest not found with the given fest id")
-//        );
+        return festRepo.findById(festId)
+                .map(fest -> festRepo.fetchEventsFromFestId(festId))
+                .orElseThrow(() -> new ResourceNotFoundException("Fest not found with id: " + festId));
 //        Set<Events> events = fest.getEvents();
 //        return events;
-        return festRepo.fetchEventsFromFestId(festId);
+
+    }
+
+    @Override
+    public Set<Participants> fetchParticipants(String festId) {
+        return festRepo.findById(festId)
+                .map(fest -> {
+                    Optional<List<Participants>> participantsList = participantRepo.findByFestId(festId);
+                    return participantsList.map(HashSet::new).orElseGet(HashSet::new); // converting the list to set
+                })
+                .orElseThrow(() -> new ResourceNotFoundException("Fest not found with id: " + festId));
     }
 
     private boolean sendEmail(String receiverMail, String password) {
